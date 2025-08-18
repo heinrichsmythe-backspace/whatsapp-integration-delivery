@@ -5,6 +5,6 @@ import lombok.extern.jackson.Jacksonized;
 
 @Builder
 @Jacksonized
-public class SampleResponseDTO {
-    Boolean success;
+public record SampleResponseDTO(boolean success) {
+
 }
