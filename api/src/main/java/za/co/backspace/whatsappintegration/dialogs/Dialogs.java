@@ -26,7 +26,7 @@ public class Dialogs {
                 DialogName.MAIN_MENU, new MainMenuDialog(),
                 DialogName.SUPPORT_CONVERSATION,
                 new SupportConversationDialog(whatsAppConversationRepository, vTigerApiClient),
-                DialogName.CALL_ME_BACK, new CallMeBackDialog());
+                DialogName.CALL_ME_BACK, new CallMeBackDialog(vTigerApiClient));
         return dialogs;
     }
 

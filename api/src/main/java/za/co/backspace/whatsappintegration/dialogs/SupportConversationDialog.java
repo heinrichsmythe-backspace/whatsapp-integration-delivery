@@ -49,7 +49,7 @@ public class SupportConversationDialog implements WhatsAppDialog {
 
     private WhatsAppConversation createSupportCaseAndOpenConversation(WhatsAppUser whatsAppUser) {
         var caseReq = new CreateCaseRequestCaseDetail(
-                String.format("WhatsApp %s %s", whatsAppUser.getFirstName(),
+                String.format("💬 WhatsApp Support Convo: %s %s", whatsAppUser.getFirstName(),
                         whatsAppUser.getMsisdn()),
                 String.format(
                         "Case opened via inbound WhatsApp support, %s. Use the WhatsApp conversation extension to reply.",
