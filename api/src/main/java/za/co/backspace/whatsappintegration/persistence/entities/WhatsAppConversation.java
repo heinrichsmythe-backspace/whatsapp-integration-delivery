@@ -24,6 +24,7 @@ public class WhatsAppConversation {
     LocalDateTime dateCreated;
     String vTigerContactId;
     String vTigerCaseId;//nullable
+    String vTigerCaseNo;//nullable
     WhatsAppConversationStatus status;
 
     public enum WhatsAppConversationStatus {

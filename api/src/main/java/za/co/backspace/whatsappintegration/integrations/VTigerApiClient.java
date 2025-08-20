@@ -1,36 +1,56 @@
 package za.co.backspace.whatsappintegration.integrations;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import za.co.backspace.whatsappintegration.config.WhatsAppIntegrationApplicationConfig;
+import za.co.backspace.whatsappintegration.rest.RestTemplateLoggingInterceptor;
 
 @Component
 public class VTigerApiClient {
 
-    private final RestTemplate restTemplate;
     private final WhatsAppIntegrationApplicationConfig config;
 
     public VTigerApiClient(WhatsAppIntegrationApplicationConfig config) {
-        this.restTemplate = new RestTemplate();
         this.config = config;
     }
 
-    public CaseDetail createCase() {
-        var element = new CreateCaseRequestCaseDetail();
-        var request = new CreateRecordRequest<CreateCaseRequestCaseDetail>("Cases", element);
+    private RestTemplate restTemplate() {
+        final RestTemplate restTemplate = new RestTemplate();
+        List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setSupportedMediaTypes(Collections.singletonList(MediaType.ALL));
+        messageConverters.add(converter);
+        restTemplate.setMessageConverters(messageConverters);
+        restTemplate.setInterceptors(Collections.singletonList(new RestTemplateLoggingInterceptor()));
+        return restTemplate;
+    }
+
+    public CaseDetail createCase(CreateCaseRequestCaseDetail newCase) {
+        var request = new CreateRecordRequest<CreateCaseRequestCaseDetail>("Cases", newCase);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<CreateRecordRequest<CreateCaseRequestCaseDetail>> httpEntity = new HttpEntity<>(request, headers);
-        var response = restTemplate.exchange(
-                config.getVTigerBaseUrl(),
+        var response = restTemplate().exchange(
+                config.getVTigerBaseUrl() + "/restapi/v1/vtiger/default/create",
                 HttpMethod.POST,
                 httpEntity,
                 new ParameterizedTypeReference<VTigerApiResponse<CaseDetail>>() {
@@ -39,7 +59,7 @@ public class VTigerApiClient {
         if (body.isSuccess()) {
             return body.getResult();
         } else {
-            throw new RuntimeException("Create case not success: " + response.getStatusCode());
+            throw new RuntimeException("Create case not success: " + response);
         }
     }
 
@@ -47,9 +67,10 @@ public class VTigerApiClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<Void> httpEntity = new HttpEntity<>(headers);
         String url = config.getVTigerBaseUrl() + "/restapi/v1/vtiger/default/retrieve?id=" + recordId;
-        ResponseEntity<VTigerApiResponse<CaseDetail>> response = restTemplate.exchange(
+        ResponseEntity<VTigerApiResponse<CaseDetail>> response = restTemplate().exchange(
                 url,
                 HttpMethod.GET,
                 httpEntity,
@@ -59,20 +80,19 @@ public class VTigerApiClient {
         if (body.isSuccess()) {
             return body.getResult();
         } else {
-            throw new RuntimeException("Get case not success: " + response.getStatusCode());
+            throw new RuntimeException("Get case not success: " + response);
         }
     }
 
-    public ContactDetail createContact() {
-        var element = new CreateContactRequestContactDetail();
-        var request = new CreateRecordRequest<CreateContactRequestContactDetail>("Contacts", element);
+    public ContactDetail createContact(CreateContactRequestContactDetail contactDetail) {
+        var request = new CreateRecordRequest<CreateContactRequestContactDetail>("Contacts", contactDetail);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
         HttpEntity<CreateRecordRequest<CreateContactRequestContactDetail>> httpEntity = new HttpEntity<>(request,
                 headers);
-        var response = restTemplate.exchange(
-                config.getVTigerBaseUrl(),
+        var response = restTemplate().exchange(
+                config.getVTigerBaseUrl() + "/restapi/v1/vtiger/default/create",
                 HttpMethod.POST,
                 httpEntity,
                 new ParameterizedTypeReference<VTigerApiResponse<ContactDetail>>() {
@@ -81,36 +101,43 @@ public class VTigerApiClient {
         if (body.isSuccess()) {
             return body.getResult();
         } else {
-            throw new RuntimeException("Create contact not success: " + response.getStatusCode());
+            throw new RuntimeException("Create contact not success: " + response);
         }
     }
 
-    public ContactDetail lookupContactByMsisdn(String msisdn) {
+    public List<ContactDetail> lookupContactByMsisdn(String msisdn) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
         HttpEntity<Void> httpEntity = new HttpEntity<>(headers);
 
-        String url = config.getVTigerBaseUrl() + "/restapi/v1/vtiger/default/lookup?type=phone&value=" + msisdn
-                + "&searchIn={\"Contacts\":[\"mobile\",\"phone\"]}";
+        URI uri;
+        try {
+            uri = new URI("https://anystack.od2.vtiger.com/restapi/v1/vtiger/default/lookup" +
+                    "?type=phone&value=" + msisdn +
+                    "&searchIn=%7B%22Contacts%22%3A%5B%22mobile%22%2C%22phone%22%5D%7D");
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
 
-        ResponseEntity<VTigerApiResponse<ContactDetail>> response = restTemplate.exchange(
-                url,
+        ResponseEntity<VTigerApiResponse<List<ContactDetail>>> response = restTemplate().exchange(
+                uri,
                 HttpMethod.GET,
                 httpEntity,
-                new ParameterizedTypeReference<VTigerApiResponse<ContactDetail>>() {
+                new ParameterizedTypeReference<VTigerApiResponse<List<ContactDetail>>>() {
                 });
 
         var body = response.getBody();
         if (body.isSuccess()) {
             return body.getResult();
         } else {
-            throw new RuntimeException("Lookup contact not success: " + response.getStatusCode());
+            throw new RuntimeException("Lookup contact not success: " + response);
         }
     }
 
-    public class VTigerApiResponse<T> {
+    public static class VTigerApiResponse<T> {
         @JsonProperty("success")
         private boolean success;
 
@@ -126,7 +153,7 @@ public class VTigerApiClient {
         }
     }
 
-    public class CreateRecordRequest<T> {
+    public static class CreateRecordRequest<T> {
         @JsonProperty("elementType")
         private String elementType;
 
@@ -147,7 +174,7 @@ public class VTigerApiClient {
         }
     }
 
-    public class CreateCaseRequestCaseDetail {
+    public static class CreateCaseRequestCaseDetail {
         @JsonProperty("title")
         private String title;
 
@@ -162,6 +189,15 @@ public class VTigerApiClient {
 
         @JsonProperty("contact_id")
         private String contactId;
+
+        public CreateCaseRequestCaseDetail(String title, String description, String casestatus, String casepriority,
+                String contactId) {
+            this.title = title;
+            this.description = description;
+            this.casestatus = casestatus;
+            this.casepriority = casepriority;
+            this.contactId = contactId;
+        }
 
         public String getTitle() {
             return title;
@@ -184,13 +220,19 @@ public class VTigerApiClient {
         }
     }
 
-    public class CreateContactRequestContactDetail {
+    public static class CreateContactRequestContactDetail {
         @JsonProperty("firstname")
         private String firstname;
         @JsonProperty("lastname")
         private String lastname;
         @JsonProperty("phone")
         private String phone;
+
+        public CreateContactRequestContactDetail(String firstname, String lastname, String phone) {
+            this.firstname = firstname;
+            this.lastname = lastname;
+            this.phone = phone;
+        }
 
         public String getPhone() {
             return phone;
@@ -205,7 +247,7 @@ public class VTigerApiClient {
         }
     }
 
-    public class CaseDetail {
+    public static class CaseDetail {
         @JsonProperty("id")
         private String id;
 
@@ -221,7 +263,7 @@ public class VTigerApiClient {
         }
     }
 
-    public class ContactDetail {
+    public static class ContactDetail {
         @JsonProperty("id")
         private String id;
 

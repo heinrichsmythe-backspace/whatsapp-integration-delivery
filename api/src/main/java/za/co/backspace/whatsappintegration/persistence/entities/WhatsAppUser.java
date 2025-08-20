@@ -21,4 +21,5 @@ public class WhatsAppUser {
     String msisdn;
     String firstName;
     String lastName;
+    String vTigerContactId;
 }

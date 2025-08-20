@@ -2,7 +2,9 @@ package za.co.backspace.whatsappintegration.dialogs;
 
 import java.util.Map;
 
+import za.co.backspace.whatsappintegration.integrations.VTigerApiClient;
 import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppUser;
+import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversationRepository;
 
 public class Dialogs {
 
@@ -18,12 +20,13 @@ public class Dialogs {
         SUPPORT_CONVERSATION_CASE_ID
     }
 
-    public static Map<DialogName, WhatsAppDialog> WhatsAppDialogFlow() {
+    public static Map<DialogName, WhatsAppDialog> WhatsAppDialogFlow(
+            WhatsAppConversationRepository whatsAppConversationRepository, VTigerApiClient vTigerApiClient) {
         Map<DialogName, WhatsAppDialog> dialogs = Map.of(
                 DialogName.MAIN_MENU, new MainMenuDialog(),
-                DialogName.SUPPORT_CONVERSATION, new SupportConversationDialog(),
-                DialogName.CALL_ME_BACK, new CallMeBackDialog()
-                );
+                DialogName.SUPPORT_CONVERSATION,
+                new SupportConversationDialog(whatsAppConversationRepository, vTigerApiClient),
+                DialogName.CALL_ME_BACK, new CallMeBackDialog());
         return dialogs;
     }
 
