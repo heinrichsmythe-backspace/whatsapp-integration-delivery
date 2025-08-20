@@ -40,4 +40,32 @@ public class WhatsAppIntegrationApplicationConfig {
     public String getWhatsAppApiAccessToken() {
         return whatsAppApiAccessToken;
     }
+
+    @Value("${vtiger.contacts-id-prefix}")
+    private String vTigerContactsIdPrefix;
+
+    public String getVTigerContactsIdPrefix() {
+        return vTigerContactsIdPrefix;
+    }
+
+    @Value("${vtiger.base-url}")
+    private String vTigerBaseUrl;
+
+    public String getVTigerBaseUrl() {
+        return vTigerBaseUrl;
+    }
+
+    @Value("${vtiger.username}")
+    private String vTigerUsername;
+
+    public String getVTigerUsername() {
+        return vTigerUsername;
+    }
+
+    @Value("${vtiger.access-key}")
+    private String vTigerAccessKey;
+
+    public String getVTigerAccessKey() {
+        return vTigerAccessKey;
+    }
 }
