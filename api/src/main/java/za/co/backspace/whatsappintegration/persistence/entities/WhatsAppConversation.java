@@ -1,5 +1,7 @@
 package za.co.backspace.whatsappintegration.persistence.entities;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,11 +14,20 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString
-public class SomeEntity {
+public class WhatsAppConversation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
+ 
+    String msisdn;
+    LocalDateTime dateCreated;
+    String vTigerContactId;
+    String vTigerCaseId;//nullable
+    WhatsAppConversationStatus status;
 
-    String col1;
+    public enum WhatsAppConversationStatus {
+        OPEN,
+        CLOSED
+    }
 }

@@ -24,14 +24,11 @@ public class VTigerApiClient {
 
     public CaseDetail createCase() {
         var element = new CreateCaseRequestCaseDetail();
-        CreateCaseRequest request = new CreateCaseRequest("Cases", element);
-
+        var request = new CreateRecordRequest<CreateCaseRequestCaseDetail>("Cases", element);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
-
-        HttpEntity<CreateCaseRequest> httpEntity = new HttpEntity<>(request, headers);
-
+        HttpEntity<CreateRecordRequest<CreateCaseRequestCaseDetail>> httpEntity = new HttpEntity<>(request, headers);
         var response = restTemplate.exchange(
                 config.getVTigerBaseUrl(),
                 HttpMethod.POST,
@@ -50,23 +47,66 @@ public class VTigerApiClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
-
-        HttpEntity<CreateCaseRequest> httpEntity = new HttpEntity<>(headers);
-
+        HttpEntity<Void> httpEntity = new HttpEntity<>(headers);
         String url = config.getVTigerBaseUrl() + "/restapi/v1/vtiger/default/retrieve?id=" + recordId;
-
         ResponseEntity<VTigerApiResponse<CaseDetail>> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
                 httpEntity,
                 new ParameterizedTypeReference<VTigerApiResponse<CaseDetail>>() {
                 });
+        var body = response.getBody();
+        if (body.isSuccess()) {
+            return body.getResult();
+        } else {
+            throw new RuntimeException("Get case not success: " + response.getStatusCode());
+        }
+    }
+
+    public ContactDetail createContact() {
+        var element = new CreateContactRequestContactDetail();
+        var request = new CreateRecordRequest<CreateContactRequestContactDetail>("Contacts", element);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+        HttpEntity<CreateRecordRequest<CreateContactRequestContactDetail>> httpEntity = new HttpEntity<>(request,
+                headers);
+        var response = restTemplate.exchange(
+                config.getVTigerBaseUrl(),
+                HttpMethod.POST,
+                httpEntity,
+                new ParameterizedTypeReference<VTigerApiResponse<ContactDetail>>() {
+                });
+        var body = response.getBody();
+        if (body.isSuccess()) {
+            return body.getResult();
+        } else {
+            throw new RuntimeException("Create contact not success: " + response.getStatusCode());
+        }
+    }
+
+    public ContactDetail lookupContactByMsisdn(String msisdn) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+
+        HttpEntity<Void> httpEntity = new HttpEntity<>(headers);
+
+        String url = config.getVTigerBaseUrl() + "/restapi/v1/vtiger/default/lookup?type=phone&value=" + msisdn
+                + "&searchIn={\"Contacts\":[\"mobile\",\"phone\"]}";
+
+        ResponseEntity<VTigerApiResponse<ContactDetail>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                httpEntity,
+                new ParameterizedTypeReference<VTigerApiResponse<ContactDetail>>() {
+                });
 
         var body = response.getBody();
         if (body.isSuccess()) {
             return body.getResult();
         } else {
-            throw new RuntimeException("Create case not success: " + response.getStatusCode());
+            throw new RuntimeException("Lookup contact not success: " + response.getStatusCode());
         }
     }
 
@@ -84,17 +124,16 @@ public class VTigerApiClient {
         public T getResult() {
             return result;
         }
-
     }
 
-    public class CreateCaseRequest {
+    public class CreateRecordRequest<T> {
         @JsonProperty("elementType")
         private String elementType;
 
         @JsonProperty("element")
-        private CreateCaseRequestCaseDetail element;
+        private T element;
 
-        public CreateCaseRequest(String elementType, CreateCaseRequestCaseDetail element) {
+        public CreateRecordRequest(String elementType, T element) {
             this.elementType = elementType;
             this.element = element;
         }
@@ -103,7 +142,7 @@ public class VTigerApiClient {
             return elementType;
         }
 
-        public CreateCaseRequestCaseDetail getElement() {
+        public T getElement() {
             return element;
         }
     }
@@ -143,7 +182,27 @@ public class VTigerApiClient {
         public String getContactId() {
             return contactId;
         }
+    }
 
+    public class CreateContactRequestContactDetail {
+        @JsonProperty("firstname")
+        private String firstname;
+        @JsonProperty("lastname")
+        private String lastname;
+        @JsonProperty("phone")
+        private String phone;
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public String getFirstname() {
+            return firstname;
+        }
+
+        public String getLastname() {
+            return lastname;
+        }
     }
 
     public class CaseDetail {
@@ -160,6 +219,40 @@ public class VTigerApiClient {
         public String getCaseNo() {
             return caseNo;
         }
+    }
 
+    public class ContactDetail {
+        @JsonProperty("id")
+        private String id;
+
+        @JsonProperty("firstname")
+        private String firstName;
+
+        @JsonProperty("lastname")
+        private String lastName;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getFirstName() {
+            return firstName;
+        }
+
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
+        }
+
+        public String getLastName() {
+            return lastName;
+        }
+
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
+        }
     }
 }
