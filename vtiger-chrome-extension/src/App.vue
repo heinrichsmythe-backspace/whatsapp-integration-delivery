@@ -5,8 +5,18 @@ const currentCaseId = ref<number>();
 
 onMounted(() => {
   // 1️⃣ Get the last case ID from background
-  chrome.runtime.sendMessage({ type: "GET_LAST_CASE" }, (resp) => {
-    if (resp?.caseId) currentCaseId.value = resp.caseId;
+  // chrome.runtime.sendMessage({ type: "GET_LAST_CASE" }, (resp) => {
+  //   console.log('GET_LAST_CASE res: ' + resp);
+  //   if (resp?.caseId) currentCaseId.value = resp.caseId;
+  // });
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tabId = tabs[0]?.id;
+    if (!tabId) return;
+
+    // 2️⃣ Ask background for last case for this tab
+    chrome.runtime.sendMessage({ type: "GET_LAST_CASE", tabId }, (resp) => {
+      if (resp?.caseId) currentCaseId.value = resp.caseId;
+    });
   });
 
   // 2️⃣ Listen for new case messages while popup is open
