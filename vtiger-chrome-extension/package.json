@@ -4,10 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-      "dev:ext": "vite build --watch --mode development",
+    "dev:ext": "vite build --watch --mode development",
     "build": "vue-tsc -b && vite build"
   },
   "dependencies": {
+    "axios": "^1.11.0",
+    "bootstrap": "^5.3.7",
+    "dayjs": "^1.11.13",
     "vue": "^3.5.18"
   },
   "devDependencies": {

@@ -8,12 +8,12 @@ import org.springframework.stereotype.Service;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.DialogArgName;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.DialogName;
+import za.co.backspace.whatsappintegration.dtos.whatsapp.WhatsAppCallbackPayload;
 import za.co.backspace.whatsappintegration.integrations.VTigerApiClient;
 import za.co.backspace.whatsappintegration.integrations.WhatsAppApiClient;
 import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppUser;
 import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversationRepository;
 import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppUserRepository;
-import za.co.backspace.whatsappintegration.rest.WhatsAppController.WhatsAppMessage;
 import za.co.backspace.whatsappintegration.utils.ConversationCache;
 
 import java.util.ArrayList;
@@ -39,7 +39,7 @@ public class WhatsAppService {
     @Autowired
     private WhatsAppUserRepository whatsAppUserRepository;
 
-    public List<String> handleIncomingMessage(WhatsAppMessage payload) {
+    public List<String> handleIncomingMessage(WhatsAppCallbackPayload.WhatsAppMessage payload) {
         var fromMsisdn = payload.getFrom();
         var messagesToSend = getMessagesToSend(fromMsisdn, payload.getText().getBody());
         return messagesToSend;
