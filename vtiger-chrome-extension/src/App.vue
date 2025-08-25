@@ -1,17 +1,28 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import { onMounted, ref } from 'vue';
+
+const currentCaseId = ref<number>();
+
+onMounted(() => {
+  // 1️⃣ Get the last case ID from background
+  chrome.runtime.sendMessage({ type: "GET_LAST_CASE" }, (resp) => {
+    if (resp?.caseId) currentCaseId.value = resp.caseId;
+  });
+
+  // 2️⃣ Listen for new case messages while popup is open
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === "CASE_OPENED") {
+      currentCaseId.value = msg.caseId;
+    }
+  });
+});
+
 </script>
 
 <template>
   <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+    Case: {{ currentCaseId }}
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
 <style scoped>
@@ -21,9 +32,11 @@ import HelloWorld from './components/HelloWorld.vue'
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.vue:hover {
   filter: drop-shadow(0 0 2em #42b883aa);
 }
