@@ -16,6 +16,7 @@ import za.co.backspace.whatsappintegration.dtos.ApiResponse;
 import za.co.backspace.whatsappintegration.dtos.WhatsAppConversationDtos.WhatsAppConversationFullInfo;
 import za.co.backspace.whatsappintegration.dtos.WhatsAppConversationDtos.WhatsAppConversationMessage;
 import za.co.backspace.whatsappintegration.dtos.whatsapp.WhatsAppCallbackPayload;
+import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppConversation.WhatsAppConversationStatus;
 import za.co.backspace.whatsappintegration.services.WhatsAppService;
 
 @RestController("whatsapp")
@@ -47,14 +48,16 @@ public class WhatsAppController {
 
     @GetMapping("vtiger/conversations/case/{caseId}")
     public ApiResponse<WhatsAppConversationFullInfo> getConvoForVTigerCase(@PathVariable("caseId") String caseId) {
-        var info = new WhatsAppConversationFullInfo(caseId, "CASE123", List.of(
+        var messages = List.of(
                 new WhatsAppConversationMessage("incoming", "Simon Support", LocalDateTime.of(2025, 8, 24, 10, 1, 0),
                         "Hello, Collin, it's Simon from support, how can I help you today?"),
                 new WhatsAppConversationMessage(
                         "outgoing",
                         "Collin Customer",
                         LocalDateTime.of(2025, 8, 24, 10, 0, 0),
-                        "hi support, my vop lin brokn")));
+                        "hi support, my vop lin brokn"));
+        var info = new WhatsAppConversationFullInfo(caseId, "CASE123", WhatsAppConversationStatus.OPEN, messages,
+                null, null);
         return new ApiResponse<>("Get convo success", info);
     }
 
@@ -63,7 +66,7 @@ public class WhatsAppController {
             @RequestBody SendMessageRequest sendMessageRequest) {
         var newm = new WhatsAppConversationMessage(
                 "outgoing", "You", LocalDateTime.now(), sendMessageRequest.message());
-        var info = new WhatsAppConversationFullInfo(caseId, "CASE123", List.of(
+        var messages = List.of(
                 new WhatsAppConversationMessage("incoming", "Simon Support", LocalDateTime.of(2025, 8, 24, 10, 1, 0),
                         "Hello, Collin, it's Simon from support, how can I help you today?"),
                 new WhatsAppConversationMessage(
@@ -71,8 +74,25 @@ public class WhatsAppController {
                         "Collin Customer",
                         LocalDateTime.of(2025, 8, 24, 10, 0, 0),
                         "hi support, my vop lin brokn"),
-                newm));
+                newm);
+        var info = new WhatsAppConversationFullInfo(caseId, "CASE123", WhatsAppConversationStatus.OPEN, messages,
+                "Peter", LocalDateTime.now());
         return new ApiResponse<>("Message sent succesfully", info);
+    }
+
+    @PostMapping("vtiger/conversations/case/{caseId}/close")
+    public ApiResponse<WhatsAppConversationFullInfo> closeConverstation(@PathVariable("caseId") String caseId) {
+        var messages = List.of(
+                new WhatsAppConversationMessage("incoming", "Simon Support", LocalDateTime.of(2025, 8, 24, 10, 1, 0),
+                        "Hello, Collin, it's Simon from support, how can I help you today?"),
+                new WhatsAppConversationMessage(
+                        "outgoing",
+                        "Collin Customer",
+                        LocalDateTime.of(2025, 8, 24, 10, 0, 0),
+                        "hi support, my vop lin brokn"));
+        var info = new WhatsAppConversationFullInfo(caseId, "CASE123", WhatsAppConversationStatus.CLOSED, messages,
+                "Peter", LocalDateTime.now());
+        return new ApiResponse<>("Case closed succesfully", info);
     }
 
     public record SendMessageRequest(String message) {

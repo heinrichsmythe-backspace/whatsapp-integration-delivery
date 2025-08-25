@@ -19,13 +19,15 @@ public class WhatsAppConversation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
- 
+
     String msisdn;
     LocalDateTime dateCreated;
     String vTigerContactId;
-    String vTigerCaseId;//nullable
-    String vTigerCaseNo;//nullable
+    String vTigerCaseId;// nullable
+    String vTigerCaseNo;// nullable
     WhatsAppConversationStatus status;
+    String closedBy;
+    LocalDateTime dateClosed;
 
     public enum WhatsAppConversationStatus {
         OPEN,

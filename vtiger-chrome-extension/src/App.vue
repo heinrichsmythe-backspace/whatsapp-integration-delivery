@@ -8,6 +8,7 @@ import DateFormatter from './formatters/DateFormatter';
 const currentCaseId = ref<string>();
 const loading_converstation = ref<boolean>();
 const loading_sendMessage = ref<boolean>();
+const loading_closingConversation = ref<boolean>();
 const caseConvo = ref<WhatsAppConversationFullInfo>();
 const input_message = ref<string>();
 const chatContainer = ref<HTMLElement | null>(null);
@@ -79,17 +80,40 @@ const recheckForCase = () => {
   chrome.runtime.sendMessage({ type: "RECHECK_FOR_CASE_IN_CONTENT" });
 }
 
+const closeConversation = () => {
+  if (!currentCaseId.value) {
+    return;
+  }
+  const res = confirm('Are you sure you want to close this conversation?');
+  if (res) {
+    loading_closingConversation.value = true;
+    ConversationService.closeConverstation(currentCaseId.value).then(success => {
+      caseConvo.value = success.data;
+      loading_closingConversation.value = false;
+      input_message.value = undefined;
+    }, error => {
+      ErrorHandler.handleApiErrorResponse(error);
+      loading_closingConversation.value = false;
+    });
+  }
+}
+
 </script>
 
 <template>
   <div class="container py-2">
-    <button class="btn btn-secondary float-end" @click="recheckForCase()">Reload</button>
+    <div class="text-end">
+      <button class="btn btn-secondary" @click="recheckForCase()">Reload</button>
+    </div>
     <div v-if="currentCaseId">
-      <LoadingSpinner :loading="loading_converstation" class="text-center mt-2" />
+      <LoadingSpinner :loading="loading_converstation || loading_closingConversation" class="text-center mt-2" />
       <div class="">
         <div class="row" v-if="caseConvo">
+          <div class="col-12">
+            <button class="btn btn-outline-danger float-end" v-if="caseConvo.status == 'OPEN'"
+              @click="closeConversation()">Close conversation</button>
+          </div>
           <div class="col-md-7 col-xs-12 col-md-offset-2">
-            <!-- Panel Chat -->
             <div class="panel">
               <div class="panel-heading">
                 <h3 class="panel-title">
@@ -113,17 +137,18 @@ const recheckForCase = () => {
                 </div>
               </div>
               <div class="panel-footer">
-                <div class="input-group">
+                <p v-if="caseConvo.status == 'CLOSED'">Conversation closed by {{ caseConvo.closedBy }} @ {{
+                  DateFormatter.formatDateTime(caseConvo.dateClosed!) }}</p>
+                <div class="input-group" v-if="caseConvo.status == 'OPEN'">
                   <textarea type="text" class="form-control" placeholder="Say something" rows="2"
                     v-model="input_message"></textarea>
                   <span class="input-group-btn">
                     <button class="btn btn-primary" type="button" @click="sendMessage()"
-                      :disabled="!input_message || input_message.length == 0 || loading_sendMessage">Send</button>
+                      :disabled="!input_message || input_message.length == 0 || loading_sendMessage || loading_closingConversation">Send</button>
                   </span>
                 </div>
               </div>
             </div>
-            <!-- End Panel Chat -->
           </div>
         </div>
       </div>
@@ -137,8 +162,8 @@ const recheckForCase = () => {
 
 <style scoped>
 .panel-body {
-  min-height: 400px;
-  max-height: 400px;
+  min-height: 340px;
+  max-height: 340px;
   /* optional */
   overflow-y: auto;
 }
