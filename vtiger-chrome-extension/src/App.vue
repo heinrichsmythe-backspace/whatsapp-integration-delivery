@@ -7,17 +7,19 @@ import DateFormatter from './formatters/DateFormatter';
 
 const currentCaseId = ref<string>();
 const loading_converstation = ref<boolean>();
+const loading_sendMessage = ref<boolean>();
 const caseConvo = ref<WhatsAppConversationFullInfo>();
 const input_message = ref<string>();
 const chatContainer = ref<HTMLElement | null>(null);
+const chromeTabId = ref<number>();
 
 onMounted(() => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const tabId = tabs[0]?.id;
-    if (!tabId) return;
+    chromeTabId.value = tabs[0]?.id;
+    if (!chromeTabId) return;
 
     // 2️⃣ Ask background for last case for this tab
-    chrome.runtime.sendMessage({ type: "GET_LAST_CASE", tabId }, (resp) => {
+    chrome.runtime.sendMessage({ type: "GET_LAST_CASE", tabId: chromeTabId.value }, (resp) => {
       if (resp?.caseId) currentCaseId.value = resp.caseId;
     });
   });
@@ -31,8 +33,6 @@ onMounted(() => {
 });
 
 watch(() => currentCaseId.value, (newValue, previousValue) => {
-  console.log(previousValue)
-  console.log(newValue)
   if (newValue && previousValue != newValue) {
     fetchConversationForCase();
   }
@@ -53,28 +53,37 @@ const sendMessage = () => {
   if (!input_message.value) {
     return;
   }
-  caseConvo.value?.messages.push({
-    direction: 'outgoing',
-    author: 'me',
-    date: '',
-    messageText: input_message.value
+  if (!currentCaseId.value) {
+    return;
+  }
+  loading_sendMessage.value = true;
+  ConversationService.sendMessage(currentCaseId.value, input_message.value).then(success => {
+    caseConvo.value = success.data;
+    loading_sendMessage.value = false;
+    input_message.value = undefined;
+    nextTick(() => {
+      if (chatContainer.value) {
+        chatContainer.value.scrollTo({
+          top: chatContainer.value.scrollHeight,
+          behavior: "smooth",
+        })
+      }
+    });
+  }, error => {
+    ErrorHandler.handleApiErrorResponse(error);
+    loading_sendMessage.value = false;
   });
-  input_message.value = undefined;
-  nextTick(() => {
-    console.log(chatContainer.value)
-    if (chatContainer.value) {
-      chatContainer.value.scrollTo({
-        top: chatContainer.value.scrollHeight,
-        behavior: "smooth",
-      })
-    }
-  });
+}
+
+const recheckForCase = () => {
+  chrome.runtime.sendMessage({ type: "RECHECK_FOR_CASE_IN_CONTENT" });
 }
 
 </script>
 
 <template>
-  <div class="container">
+  <div class="container py-2">
+    <button class="btn btn-secondary float-end" @click="recheckForCase()">Reload</button>
     <div v-if="currentCaseId">
       <LoadingSpinner :loading="loading_converstation" class="text-center mt-2" />
       <div class="">
@@ -109,7 +118,7 @@ const sendMessage = () => {
                     v-model="input_message"></textarea>
                   <span class="input-group-btn">
                     <button class="btn btn-primary" type="button" @click="sendMessage()"
-                      :disabled="!input_message || input_message.length == 0">Send</button>
+                      :disabled="!input_message || input_message.length == 0 || loading_sendMessage">Send</button>
                   </span>
                 </div>
               </div>

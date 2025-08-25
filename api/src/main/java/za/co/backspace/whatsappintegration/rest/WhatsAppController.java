@@ -57,4 +57,25 @@ public class WhatsAppController {
                         "hi support, my vop lin brokn")));
         return new ApiResponse<>("Get convo success", info);
     }
+
+    @PostMapping("vtiger/conversations/case/{caseId}/sendMessage")
+    public ApiResponse<WhatsAppConversationFullInfo> sendMessage(@PathVariable("caseId") String caseId,
+            @RequestBody SendMessageRequest sendMessageRequest) {
+        var newm = new WhatsAppConversationMessage(
+                "outgoing", "You", LocalDateTime.now(), sendMessageRequest.message());
+        var info = new WhatsAppConversationFullInfo(caseId, "CASE123", List.of(
+                new WhatsAppConversationMessage("incoming", "Simon Support", LocalDateTime.of(2025, 8, 24, 10, 1, 0),
+                        "Hello, Collin, it's Simon from support, how can I help you today?"),
+                new WhatsAppConversationMessage(
+                        "outgoing",
+                        "Collin Customer",
+                        LocalDateTime.of(2025, 8, 24, 10, 0, 0),
+                        "hi support, my vop lin brokn"),
+                newm));
+        return new ApiResponse<>("Message sent succesfully", info);
+    }
+
+    public record SendMessageRequest(String message) {
+
+    }
 }

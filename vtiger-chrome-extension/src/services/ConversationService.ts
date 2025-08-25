@@ -19,6 +19,11 @@ const getConversationForCase = (caseId: string): Promise<ApiSuccessResponse<What
     return axiosClient.get(`${ConfigLoader.getConfig().apiBaseUrl}/vtiger/conversations/case/${caseId}`);
 }
 
+const sendMessage = (caseId: string, message: string): Promise<ApiSuccessResponse<WhatsAppConversationFullInfo>> => {
+    return axiosClient.post(`${ConfigLoader.getConfig().apiBaseUrl}/vtiger/conversations/case/${caseId}/sendMessage`, { caseId, message });
+}
+
 export default {
-    getConversationForCase
+    getConversationForCase,
+    sendMessage
 }

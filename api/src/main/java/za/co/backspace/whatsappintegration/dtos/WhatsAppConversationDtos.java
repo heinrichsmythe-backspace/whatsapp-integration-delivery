@@ -4,7 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public final class WhatsAppConversationDtos {
-    public record WhatsAppConversationFullInfo(String caseId, String caseNo, List<WhatsAppConversationMessage> messages) {
+    public record WhatsAppConversationFullInfo(String caseId, String caseNo,
+            List<WhatsAppConversationMessage> messages) {
 
     }
 
