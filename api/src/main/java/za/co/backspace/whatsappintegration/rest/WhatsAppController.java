@@ -105,7 +105,7 @@ public class WhatsAppController {
     @GetMapping("/vtiger/conversations/case/{caseId}/messages/latest")
     public ApiResponse<WhatsAppConversationMessage> getLatestMessage(@PathVariable("caseId") String caseId) {
         var msg = new WhatsAppConversationMessage(
-                "1",
+                "4",
                 "incoming", "Joe", LocalDateTime.now(), "message");
         return new ApiResponse<>("Get message succesfully", msg);
     }

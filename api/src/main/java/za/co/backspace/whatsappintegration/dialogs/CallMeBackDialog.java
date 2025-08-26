@@ -11,7 +11,6 @@ import za.co.backspace.whatsappintegration.dialogs.Dialogs.WhatsAppDialog;
 import za.co.backspace.whatsappintegration.integrations.VTigerApiClient;
 import za.co.backspace.whatsappintegration.integrations.VTigerApiClient.CreateCaseRequestCaseDetail;
 import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppUser;
-import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversationRepository;
 
 public class CallMeBackDialog implements WhatsAppDialog {
 

@@ -32,29 +32,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg.type === 'START_POLLING_FOR_NEW_MESSAGES') {
         const lastIncomingMessageId = msg.lastIncomingMessageId;
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            const tabId = tabs[0].id!;
-            chrome.tabs.sendMessage(tabId, { type: 'STOP_FLASHING_TAB' });
-            const caseForTab = casesByTab[tabId];
-            caseForTab.lastIncomingMessageId = lastIncomingMessageId;
-            if (caseForTab.pollIntervalId) {
-                clearInterval(caseForTab.pollIntervalId);
-            }
-            caseForTab.pollIntervalId = setInterval(() => {
-                pollApiForLatestMessage(caseForTab.caseId, caseForTab.lastIncomingMessageId);
-            }, 5000);
-        });
-    }
-
-    if (msg.type === "CASE_CONVO_LOADED") {
-        // Forward it to the content script
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id!, { type: "CASE_CONVO_LOADED", text: msg.text });
-        });
+        const tabId = msg.tabId;
+        chrome.tabs.sendMessage(tabId, { type: 'STOP_FLASHING_TAB' });
+        const caseForTab = casesByTab[tabId];
+        caseForTab.lastIncomingMessageId = lastIncomingMessageId;
+        if (caseForTab.pollIntervalId) {
+            clearInterval(caseForTab.pollIntervalId);
+        }
+        caseForTab.pollIntervalId = setInterval(() => {
+            pollApiForLatestMessage(tabId, caseForTab.caseId, caseForTab.lastIncomingMessageId);
+        }, 5000);
     }
 });
 
-async function pollApiForLatestMessage(caseId: number, lastIncomingMessageId?: number) {
+async function pollApiForLatestMessage(tabId: number, caseId: number, lastIncomingMessageId?: number) {
     try {
         console.log(`POLLING for last message, case: ${caseId} ${lastIncomingMessageId}`);
         const response = await fetch(`${apiBaseUrl}/vtiger/conversations/case/${caseId}/messages/latest`);
@@ -65,9 +56,7 @@ async function pollApiForLatestMessage(caseId: number, lastIncomingMessageId?: n
         console.log(`Message id from API: ${data.data.id}, Last message seen: ${lastIncomingMessageId}`);
         if (data.data.id != lastIncomingMessageId) {
             console.log('Message id not the same, flash the tab')
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                chrome.tabs.sendMessage(tabs[0].id!, { type: "START_FLASHING_TAB" });
-            });
+            chrome.tabs.sendMessage(tabId, { type: "START_FLASHING_TAB" });
         } else {
             console.log('Message id is the same, dont flash the tab');
         }
