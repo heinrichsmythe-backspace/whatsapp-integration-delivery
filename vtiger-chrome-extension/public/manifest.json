@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "My Vue3 Chrome Extension",
+  "name": "vTiger WhatsApp",
   "version": "1.0.0",
   "description": "A Chrome extension built with Vue 3",
   "action": {

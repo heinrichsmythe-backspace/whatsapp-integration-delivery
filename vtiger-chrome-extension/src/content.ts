@@ -71,6 +71,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         lookForCaseModal();
         watchUrlForCase();
     }
+
+    if(message.type === 'START_FLASHING_TAB'){
+        console.log('START_FLASHING_TAB');
+        startFlashing();
+    }
+
+    if(message.type === 'STOP_FLASHING_TAB'){
+        console.log('STOP_FLASHING_TAB');
+        stopFlashing();
+    }
 });
 
 let flashing = false;

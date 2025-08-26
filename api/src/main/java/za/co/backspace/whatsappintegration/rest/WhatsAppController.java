@@ -49,9 +49,11 @@ public class WhatsAppController {
     @GetMapping("vtiger/conversations/case/{caseId}")
     public ApiResponse<WhatsAppConversationFullInfo> getConvoForVTigerCase(@PathVariable("caseId") String caseId) {
         var messages = List.of(
-                new WhatsAppConversationMessage("incoming", "Simon Support", LocalDateTime.of(2025, 8, 24, 10, 1, 0),
+                new WhatsAppConversationMessage("1", "incoming", "Simon Support",
+                        LocalDateTime.of(2025, 8, 24, 10, 1, 0),
                         "Hello, Collin, it's Simon from support, how can I help you today?"),
                 new WhatsAppConversationMessage(
+                        "2",
                         "outgoing",
                         "Collin Customer",
                         LocalDateTime.of(2025, 8, 24, 10, 0, 0),
@@ -61,15 +63,18 @@ public class WhatsAppController {
         return new ApiResponse<>("Get convo success", info);
     }
 
-    @PostMapping("vtiger/conversations/case/{caseId}/sendMessage")
+    @PostMapping("vtiger/conversations/case/{caseId}/messsages/send")
     public ApiResponse<WhatsAppConversationFullInfo> sendMessage(@PathVariable("caseId") String caseId,
             @RequestBody SendMessageRequest sendMessageRequest) {
         var newm = new WhatsAppConversationMessage(
+                "1",
                 "outgoing", "You", LocalDateTime.now(), sendMessageRequest.message());
         var messages = List.of(
-                new WhatsAppConversationMessage("incoming", "Simon Support", LocalDateTime.of(2025, 8, 24, 10, 1, 0),
+                new WhatsAppConversationMessage("1", "incoming", "Simon Support",
+                        LocalDateTime.of(2025, 8, 24, 10, 1, 0),
                         "Hello, Collin, it's Simon from support, how can I help you today?"),
                 new WhatsAppConversationMessage(
+                        "2",
                         "outgoing",
                         "Collin Customer",
                         LocalDateTime.of(2025, 8, 24, 10, 0, 0),
@@ -83,9 +88,11 @@ public class WhatsAppController {
     @PostMapping("vtiger/conversations/case/{caseId}/close")
     public ApiResponse<WhatsAppConversationFullInfo> closeConverstation(@PathVariable("caseId") String caseId) {
         var messages = List.of(
-                new WhatsAppConversationMessage("incoming", "Simon Support", LocalDateTime.of(2025, 8, 24, 10, 1, 0),
+                new WhatsAppConversationMessage("1", "incoming", "Simon Support",
+                        LocalDateTime.of(2025, 8, 24, 10, 1, 0),
                         "Hello, Collin, it's Simon from support, how can I help you today?"),
                 new WhatsAppConversationMessage(
+                        "2",
                         "outgoing",
                         "Collin Customer",
                         LocalDateTime.of(2025, 8, 24, 10, 0, 0),
@@ -93,6 +100,14 @@ public class WhatsAppController {
         var info = new WhatsAppConversationFullInfo(caseId, "CASE123", WhatsAppConversationStatus.CLOSED, messages,
                 "Peter", LocalDateTime.now());
         return new ApiResponse<>("Case closed succesfully", info);
+    }
+
+    @GetMapping("/vtiger/conversations/case/{caseId}/messages/latest")
+    public ApiResponse<WhatsAppConversationMessage> getLatestMessage(@PathVariable("caseId") String caseId) {
+        var msg = new WhatsAppConversationMessage(
+                "1",
+                "incoming", "Joe", LocalDateTime.now(), "message");
+        return new ApiResponse<>("Get message succesfully", msg);
     }
 
     public record SendMessageRequest(String message) {

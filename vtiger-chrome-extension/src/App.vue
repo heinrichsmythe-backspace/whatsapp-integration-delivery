@@ -44,6 +44,12 @@ const fetchConversationForCase = () => {
   ConversationService.getConversationForCase(currentCaseId.value!).then(success => {
     loading_converstation.value = false;
     caseConvo.value = success.data;
+    const incoming = success.data.messages.filter(m => m.direction == 'incoming');
+    let lastIncomingMessageId: string | undefined;
+    if (incoming.length > 0) {
+      lastIncomingMessageId = incoming[incoming.length - 1].id;
+    }
+    chrome.runtime.sendMessage({ type: "START_POLLING_FOR_NEW_MESSAGES", tabId: chromeTabId.value, lastIncomingMessageId });
   }, error => {
     ErrorHandler.handleApiErrorResponse(error);
     loading_converstation.value = false;

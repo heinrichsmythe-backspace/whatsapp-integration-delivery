@@ -3,6 +3,7 @@ import type { ApiSuccessResponse } from "../http/ApiSuccessResponse"
 import axiosClient from "../http/axiosClient";
 
 export type WhatsAppConversationMessage = {
+    id: string;
     direction: string;
     author: string;
     date: string;
@@ -25,7 +26,7 @@ const getConversationForCase = (caseId: string): Promise<ApiSuccessResponse<What
 }
 
 const sendMessage = (caseId: string, message: string): Promise<ApiSuccessResponse<WhatsAppConversationFullInfo>> => {
-    return axiosClient.post(`${ConfigLoader.getConfig().apiBaseUrl}/vtiger/conversations/case/${caseId}/sendMessage`, { caseId, message });
+    return axiosClient.post(`${ConfigLoader.getConfig().apiBaseUrl}/vtiger/conversations/case/${caseId}/messages/send`, { caseId, message });
 }
 
 const closeConverstation = (caseId: string): Promise<ApiSuccessResponse<WhatsAppConversationFullInfo>> => {

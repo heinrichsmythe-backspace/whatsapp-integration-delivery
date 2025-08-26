@@ -11,7 +11,8 @@ public final class WhatsAppConversationDtos {
 
     }
 
-    public record WhatsAppConversationMessage(String direction, String author, LocalDateTime date, String messageText) {
+    public record WhatsAppConversationMessage(String id, String direction, String author, LocalDateTime date,
+            String messageText) {
 
     }
 
