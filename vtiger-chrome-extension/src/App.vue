@@ -151,7 +151,7 @@ const closeConversation = () => {
                 </div>
               </div>
               <div class="panel-footer">
-                <p v-if="caseConvo.status == 'CLOSED'">Conversation closed by {{ caseConvo.closedBy }} @ {{
+                <p v-if="caseConvo.status == 'CLOSED'">Conversation was closed by {{ caseConvo.closedBy }} @ {{
                   DateFormatter.formatDateTime(caseConvo.dateClosed!) }}</p>
                 <div class="input-group" v-if="caseConvo.status == 'OPEN'">
                   <textarea type="text" class="form-control" placeholder="Say something" rows="2"

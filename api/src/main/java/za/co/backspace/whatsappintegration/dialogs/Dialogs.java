@@ -4,7 +4,6 @@ import java.util.Map;
 
 import za.co.backspace.whatsappintegration.integrations.VTigerApiClient;
 import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppUser;
-import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversationRepository;
 import za.co.backspace.whatsappintegration.services.WhatsAppService;
 
 public class Dialogs {

@@ -75,4 +75,11 @@ public class WhatsAppIntegrationApplicationConfig {
     public String getVTigerAccessKey() {
         return vTigerAccessKey;
     }
+
+    @Value("${conversation.autoclose-seconds}")
+    private int conversationAutoCloseSeconds;
+
+    public int getConversationAutoCloseSeconds() {
+        return conversationAutoCloseSeconds;
+    }
 }

@@ -28,6 +28,7 @@ public class WhatsAppConversation {
     WhatsAppConversationStatus status;
     String closedBy;
     LocalDateTime dateClosed;
+    LocalDateTime lastActivity;
 
     public enum WhatsAppConversationStatus {
         OPEN,

@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import za.co.backspace.whatsappintegration.SystemInsights;
+import za.co.backspace.whatsappintegration.config.WhatsAppIntegrationApplicationConfig;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.DialogArgName;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.DialogName;
@@ -49,6 +51,10 @@ public class WhatsAppService {
     private WhatsAppConversationMessagesRepository whatsAppConversationMessagesRepository;
     @Autowired
     private WhatsAppUserRepository whatsAppUserRepository;
+    @Autowired
+    private WhatsAppIntegrationApplicationConfig config;
+    @Autowired
+    private SystemInsights systemInsights;
 
     public List<String> handleIncomingMessage(WhatsAppCallbackPayload.WhatsAppMessage payload) {
         var fromMsisdn = payload.getFrom();
@@ -187,6 +193,9 @@ public class WhatsAppService {
             SendMessageRequest sendMessageRequest) {
         caseId = vTigerApiClient.makeModuleCaseId(caseId);
         var convo = whatsAppConversationRepository.findByCaseId(caseId);
+        if (convo.getStatus() == WhatsAppConversationStatus.CLOSED) {
+            return getConvoForVTigerCase(caseId);
+        }
         var newMessage = new WhatsAppConversationMessage();
         newMessage.setConversationId(convo.getId());
         newMessage.setDirection("Outgoing");
@@ -196,17 +205,20 @@ public class WhatsAppService {
         newMessage.setDate(LocalDateTime.now());
         whatsAppApiClient.sendTextMessage(convo.getMsisdn(), sendMessageRequest.message());
         whatsAppConversationMessagesRepository.save(newMessage);
+        convo.setLastActivity(LocalDateTime.now());
+        whatsAppConversationRepository.save(convo);
         return getConvoForVTigerCase(caseId);
     }
 
-    public WhatsAppConversationFullInfo closeConversation(String userName, String caseId) {
+    public WhatsAppConversationFullInfo closeConversation(String closedBy, String caseId) {
         caseId = vTigerApiClient.makeModuleCaseId(caseId);
         var convo = whatsAppConversationRepository.findByCaseId(caseId);
         if (convo.getStatus() == WhatsAppConversationStatus.OPEN) {
-            convo.setClosedBy(userName);
+            convo.setClosedBy(closedBy);
             convo.setDateClosed(LocalDateTime.now());
             convo.setStatus(WhatsAppConversationStatus.CLOSED);
             whatsAppConversationRepository.save(convo);
+            conversationCache.remove(implementationName, convo.getMsisdn());
         }
         return getConvoForVTigerCase(caseId);
     }
@@ -240,5 +252,22 @@ public class WhatsAppService {
         newMessage.setCaseId(caseId);
         newMessage.setDate(LocalDateTime.now());
         whatsAppConversationMessagesRepository.save(newMessage);
+        convo.setLastActivity(LocalDateTime.now());
+        whatsAppConversationRepository.save(convo);
+    }
+
+    public void closeInactiveConversations() {
+        LocalDateTime date = LocalDateTime.now().minusSeconds(config.getConversationAutoCloseSeconds());
+        List<WhatsAppConversation> toClose = whatsAppConversationRepository
+                .findByStatusAndLastActivityBefore(WhatsAppConversationStatus.OPEN, date);
+        logger.info(toClose.size() + " conversations to auto close");
+        toClose.forEach(c -> {
+            try {
+                logger.info("Auto Closing conversation # " + c.getId() + " due to inactivity");
+                closeConversation("Autoclosed", c.getCaseId());
+            } catch (Exception e) {
+                systemInsights.reportError(e, "Error closing convo #" + c.getId());
+            }
+        });
     }
 }
