@@ -14,23 +14,16 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString
-public class WhatsAppConversation {
+public class WhatsAppConversationMessage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    String msisdn;
-    LocalDateTime dateCreated;
-    String contactId;
-    String caseId;// nullable
-    String caseNo;// nullable
-    WhatsAppConversationStatus status;
-    String closedBy;
-    LocalDateTime dateClosed;
-
-    public enum WhatsAppConversationStatus {
-        OPEN,
-        CLOSED
-    }
+    Long conversationId;
+    String caseId;
+    String direction;
+    String messageText;
+    String author;
+    LocalDateTime date;
 }

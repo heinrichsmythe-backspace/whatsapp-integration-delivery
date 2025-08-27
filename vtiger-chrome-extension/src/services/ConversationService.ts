@@ -13,6 +13,7 @@ export type WhatsAppConversationMessage = {
 export type WhatsAppConversationFullInfo = {
     caseId: string;
     caseNo: string;
+    msisdn: string;
     messages: WhatsAppConversationMessage[];
     status: WhatsAppConversationStatus;
     closedBy?: string;
@@ -21,7 +22,7 @@ export type WhatsAppConversationFullInfo = {
 
 export type WhatsAppConversationStatus = 'OPEN' | "CLOSED";
 
-const getConversationForCase = (caseId: string): Promise<ApiSuccessResponse<WhatsAppConversationFullInfo>> => {
+const getConversationForCase = (caseId: string): Promise<ApiSuccessResponse<WhatsAppConversationFullInfo | undefined>> => {
     return axiosClient.get(`${ConfigLoader.getConfig().apiBaseUrl}/vtiger/conversations/case/${caseId}`);
 }
 

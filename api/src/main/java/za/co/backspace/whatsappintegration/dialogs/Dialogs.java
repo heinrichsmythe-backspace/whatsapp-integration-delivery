@@ -5,6 +5,7 @@ import java.util.Map;
 import za.co.backspace.whatsappintegration.integrations.VTigerApiClient;
 import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppUser;
 import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversationRepository;
+import za.co.backspace.whatsappintegration.services.WhatsAppService;
 
 public class Dialogs {
 
@@ -21,11 +22,11 @@ public class Dialogs {
     }
 
     public static Map<DialogName, WhatsAppDialog> WhatsAppDialogFlow(
-            WhatsAppConversationRepository whatsAppConversationRepository, VTigerApiClient vTigerApiClient) {
+            WhatsAppService whatsAppService, VTigerApiClient vTigerApiClient) {
         Map<DialogName, WhatsAppDialog> dialogs = Map.of(
                 DialogName.MAIN_MENU, new MainMenuDialog(),
                 DialogName.SUPPORT_CONVERSATION,
-                new SupportConversationDialog(whatsAppConversationRepository, vTigerApiClient),
+                new SupportConversationDialog(whatsAppService),
                 DialogName.CALL_ME_BACK, new CallMeBackDialog(vTigerApiClient));
         return dialogs;
     }

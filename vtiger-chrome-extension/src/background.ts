@@ -6,7 +6,7 @@ chrome.runtime.onInstalled.addListener(() => {
     console.log("Extension installed!");
 });
 
-const casesByTab: Record<number, { caseId: number, lastIncomingMessageId?: number, pollIntervalId?: number }> = {};
+const casesByTab: Record<number, { caseId: number, lastMessageId?: number, pollIntervalId?: number }> = {};
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     console.log('bg msg: ' + msg.type)
@@ -31,30 +31,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 
     if (msg.type === 'START_POLLING_FOR_NEW_MESSAGES') {
-        const lastIncomingMessageId = msg.lastIncomingMessageId;
+        const lastMessageId = msg.lastMessageId;
         const tabId = msg.tabId;
         chrome.tabs.sendMessage(tabId, { type: 'STOP_FLASHING_TAB' });
         const caseForTab = casesByTab[tabId];
-        caseForTab.lastIncomingMessageId = lastIncomingMessageId;
+        caseForTab.lastMessageId = lastMessageId;
         if (caseForTab.pollIntervalId) {
             clearInterval(caseForTab.pollIntervalId);
         }
-        caseForTab.pollIntervalId = setInterval(() => {
-            pollApiForLatestMessage(tabId, caseForTab.caseId, caseForTab.lastIncomingMessageId);
-        }, 5000);
+        // caseForTab.pollIntervalId = setInterval(() => {
+        //     pollApiForLatestMessage(tabId, caseForTab.caseId, caseForTab.lastMessageId);
+        // }, 5000);
     }
 });
 
-async function pollApiForLatestMessage(tabId: number, caseId: number, lastIncomingMessageId?: number) {
+async function pollApiForLatestMessage(tabId: number, caseId: number, lastMessageId?: number) {
     try {
-        console.log(`POLLING for last message, case: ${caseId} ${lastIncomingMessageId}`);
+        console.log(`POLLING for last message, case: ${caseId} ${lastMessageId}`);
         const response = await fetch(`${apiBaseUrl}/vtiger/conversations/case/${caseId}/messages/latest`);
         if (!response.ok) throw new Error("Network response was not ok");
 
         const data = await response.json();
         console.log("API Response:", data);
-        console.log(`Message id from API: ${data.data.id}, Last message seen: ${lastIncomingMessageId}`);
-        if (data.data.id != lastIncomingMessageId) {
+        console.log(`Message id from API: ${data.data.id}, Last message seen: ${lastMessageId}`);
+        if (data.data.id != lastMessageId) {
             console.log('Message id not the same, flash the tab')
             chrome.tabs.sendMessage(tabId, { type: "START_FLASHING_TAB" });
         } else {

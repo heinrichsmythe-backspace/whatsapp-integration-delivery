@@ -8,14 +8,23 @@ import org.springframework.stereotype.Service;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.DialogArgName;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.DialogName;
+import za.co.backspace.whatsappintegration.dtos.WhatsAppConversationDtos.WhatsAppConversationFullInfo;
+import za.co.backspace.whatsappintegration.dtos.WhatsAppConversationDtos.WhatsAppConversationMessageBasicInfo;
 import za.co.backspace.whatsappintegration.dtos.whatsapp.WhatsAppCallbackPayload;
 import za.co.backspace.whatsappintegration.integrations.VTigerApiClient;
+import za.co.backspace.whatsappintegration.integrations.VTigerApiClient.CreateCaseRequestCaseDetail;
 import za.co.backspace.whatsappintegration.integrations.WhatsAppApiClient;
+import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppConversation;
+import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppConversation.WhatsAppConversationStatus;
+import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppConversationMessage;
 import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppUser;
+import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversationMessagesRepository;
 import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversationRepository;
 import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppUserRepository;
+import za.co.backspace.whatsappintegration.rest.WhatsAppController.SendMessageRequest;
 import za.co.backspace.whatsappintegration.utils.ConversationCache;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,6 +46,8 @@ public class WhatsAppService {
     @Autowired
     private WhatsAppConversationRepository whatsAppConversationRepository;
     @Autowired
+    private WhatsAppConversationMessagesRepository whatsAppConversationMessagesRepository;
+    @Autowired
     private WhatsAppUserRepository whatsAppUserRepository;
 
     public List<String> handleIncomingMessage(WhatsAppCallbackPayload.WhatsAppMessage payload) {
@@ -48,7 +59,7 @@ public class WhatsAppService {
     private List<String> getMessagesToSend(String fromMsisdn, String messageBody) {
         var defaultDialog = DialogName.MAIN_MENU;
         var messagesToSend = new ArrayList<String>();
-        var dialogs = Dialogs.WhatsAppDialogFlow(whatsAppConversationRepository, vTigerApiClient);
+        var dialogs = Dialogs.WhatsAppDialogFlow(this, vTigerApiClient);
         var existingConvo = conversationCache.getByKey(implementationName, fromMsisdn);
         DialogName nextDialogName;
         WhatsAppUser whatsAppUser = getOrCreateWhatsAppUserFromMsisdn(fromMsisdn);
@@ -123,5 +134,111 @@ public class WhatsAppService {
             logConversationEvent(msisdn, String.format("WhatsAppUser %d successfully found for msisdn", user.getId()));
         }
         return user;
+    }
+
+    public WhatsAppConversation createCaseAndOpenConversation(WhatsAppUser whatsAppUser, String caseTitle,
+            String caseDescription) {
+        var caseReq = new CreateCaseRequestCaseDetail(
+                caseTitle,
+                caseDescription,
+                "Open",
+                "high",
+                whatsAppUser.getVTigerContactId());
+        var newCase = vTigerApiClient.createCase(caseReq);
+        var newConvo = new WhatsAppConversation();
+        newConvo.setDateCreated(LocalDateTime.now());
+        newConvo.setMsisdn(whatsAppUser.getMsisdn());
+        newConvo.setStatus(WhatsAppConversationStatus.OPEN);
+        newConvo.setCaseId(newCase.getId());
+        newConvo.setCaseNo(newCase.getCaseNo());
+        newConvo.setContactId(whatsAppUser.getVTigerContactId());
+        whatsAppConversationRepository.save(newConvo);
+        return newConvo;
+    }
+
+    public WhatsAppConversationFullInfo getConvoForVTigerCase(String caseId) {
+        caseId = vTigerApiClient.makeModuleCaseId(caseId);
+        var convo = whatsAppConversationRepository.findByCaseId(caseId);
+        if (convo == null) {
+            // a case was created but a convo wasn't opened. like a CallMeBack
+            return null;
+        }
+
+        List<WhatsAppConversationMessageBasicInfo> messages = whatsAppConversationMessagesRepository
+                .findByCaseId(caseId).stream().map(m -> makeBasicInfo(m))
+                .toList();
+        var info = new WhatsAppConversationFullInfo(
+                convo.getCaseId(),
+                convo.getCaseNo(),
+                convo.getMsisdn(),
+                convo.getStatus(),
+                messages,
+                convo.getClosedBy(),
+                convo.getDateClosed());
+        return info;
+    }
+
+    public WhatsAppConversation getOpenCaseConversationForMsisdn(String msisdn) {
+        return whatsAppConversationRepository.findByMsisdnAndStatus(msisdn,
+                WhatsAppConversation.WhatsAppConversationStatus.OPEN);
+    }
+
+    public WhatsAppConversationFullInfo sendMessage(String userName, String caseId,
+            SendMessageRequest sendMessageRequest) {
+        caseId = vTigerApiClient.makeModuleCaseId(caseId);
+        var convo = whatsAppConversationRepository.findByCaseId(caseId);
+        var newMessage = new WhatsAppConversationMessage();
+        newMessage.setConversationId(convo.getId());
+        newMessage.setDirection("Outgoing");
+        newMessage.setMessageText(sendMessageRequest.message());
+        newMessage.setAuthor(userName);
+        newMessage.setCaseId(caseId);
+        newMessage.setDate(LocalDateTime.now());
+        whatsAppApiClient.sendTextMessage(convo.getMsisdn(), sendMessageRequest.message());
+        whatsAppConversationMessagesRepository.save(newMessage);
+        return getConvoForVTigerCase(caseId);
+    }
+
+    public WhatsAppConversationFullInfo closeConversation(String userName, String caseId) {
+        caseId = vTigerApiClient.makeModuleCaseId(caseId);
+        var convo = whatsAppConversationRepository.findByCaseId(caseId);
+        if (convo.getStatus() == WhatsAppConversationStatus.OPEN) {
+            convo.setClosedBy(userName);
+            convo.setDateClosed(LocalDateTime.now());
+            convo.setStatus(WhatsAppConversationStatus.CLOSED);
+            whatsAppConversationRepository.save(convo);
+        }
+        return getConvoForVTigerCase(caseId);
+    }
+
+    private static WhatsAppConversationMessageBasicInfo makeBasicInfo(WhatsAppConversationMessage message) {
+        if (message == null) {
+            return null;
+        }
+        return new WhatsAppConversationMessageBasicInfo(
+                message.getId(),
+                message.getDirection(),
+                message.getAuthor(),
+                message.getDate(),
+                message.getMessageText());
+    }
+
+    public WhatsAppConversationMessageBasicInfo getLatestMessage(String caseId) {
+        caseId = vTigerApiClient.makeModuleCaseId(caseId);
+        var latest = whatsAppConversationMessagesRepository.findFirstByCaseIdOrderByDateDesc(caseId);
+        return makeBasicInfo(latest);
+    }
+
+    public void createIncomingMessageOnCase(Long convoId, String caseId, String messageText, WhatsAppUser user) {
+        caseId = vTigerApiClient.makeModuleCaseId(caseId);
+        var convo = whatsAppConversationRepository.findByCaseId(caseId);
+        var newMessage = new WhatsAppConversationMessage();
+        newMessage.setConversationId(convo.getId());
+        newMessage.setDirection("Incoming");
+        newMessage.setMessageText(messageText);
+        newMessage.setAuthor(user.getFirstName() + " " + user.getLastName());
+        newMessage.setCaseId(caseId);
+        newMessage.setDate(LocalDateTime.now());
+        whatsAppConversationMessagesRepository.save(newMessage);
     }
 }

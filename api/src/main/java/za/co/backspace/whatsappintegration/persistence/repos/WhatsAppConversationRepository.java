@@ -6,4 +6,5 @@ import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppConversa
 public interface WhatsAppConversationRepository extends JpaRepository<WhatsAppConversation, Long> {
 
     WhatsAppConversation findByMsisdnAndStatus(String msisdn, WhatsAppConversation.WhatsAppConversationStatus status);
+    WhatsAppConversation findByCaseId(String caseId);
 }

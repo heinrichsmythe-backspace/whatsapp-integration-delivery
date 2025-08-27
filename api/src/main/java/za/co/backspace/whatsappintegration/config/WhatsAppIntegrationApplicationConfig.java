@@ -48,6 +48,13 @@ public class WhatsAppIntegrationApplicationConfig {
         return vTigerContactsIdPrefix;
     }
 
+    @Value("${vtiger.cases-id-prefix}")
+    private String vTigerCasesIdPrefix;
+
+    public String getVTigerCasesIdPrefix() {
+        return vTigerCasesIdPrefix;
+    }
+
     @Value("${vtiger.base-url}")
     private String vTigerBaseUrl;
 

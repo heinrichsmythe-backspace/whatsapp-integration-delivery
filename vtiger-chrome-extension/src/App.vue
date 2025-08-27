@@ -41,15 +41,18 @@ watch(() => currentCaseId.value, (newValue, previousValue) => {
 
 const fetchConversationForCase = () => {
   loading_converstation.value = true;
+  caseConvo.value = undefined;
   ConversationService.getConversationForCase(currentCaseId.value!).then(success => {
     loading_converstation.value = false;
-    caseConvo.value = success.data;
-    const incoming = success.data.messages.filter(m => m.direction == 'incoming');
-    let lastIncomingMessageId: string | undefined;
-    if (incoming.length > 0) {
-      lastIncomingMessageId = incoming[incoming.length - 1].id;
+    if (success.data) {
+      caseConvo.value = success.data;
+      scrollToBottomOfChat();
+      let lastMessageId: string | undefined;
+      if (caseConvo.value.messages.length > 0) {
+        lastMessageId = caseConvo.value.messages[caseConvo.value.messages.length - 1].id;
+      }
+      chrome.runtime.sendMessage({ type: "START_POLLING_FOR_NEW_MESSAGES", tabId: chromeTabId.value, lastMessageId });
     }
-    chrome.runtime.sendMessage({ type: "START_POLLING_FOR_NEW_MESSAGES", tabId: chromeTabId.value, lastIncomingMessageId });
   }, error => {
     ErrorHandler.handleApiErrorResponse(error);
     loading_converstation.value = false;
@@ -68,17 +71,21 @@ const sendMessage = () => {
     caseConvo.value = success.data;
     loading_sendMessage.value = false;
     input_message.value = undefined;
-    nextTick(() => {
-      if (chatContainer.value) {
-        chatContainer.value.scrollTo({
-          top: chatContainer.value.scrollHeight,
-          behavior: "smooth",
-        })
-      }
-    });
+    scrollToBottomOfChat();
   }, error => {
     ErrorHandler.handleApiErrorResponse(error);
     loading_sendMessage.value = false;
+  });
+}
+
+const scrollToBottomOfChat = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTo({
+        top: chatContainer.value.scrollHeight,
+        behavior: "smooth",
+      })
+    }
   });
 }
 
@@ -128,7 +135,8 @@ const closeConversation = () => {
               </div>
               <div class="panel-body" ref="chatContainer">
                 <div class="chats">
-                  <div class="chat" :class="{ 'chat-left': message.direction == 'incoming' }"
+                  <div>Conversation with: {{ caseConvo.msisdn }}</div>
+                  <div class="chat" :class="{ 'chat-left': message.direction == 'Incoming' }"
                     v-for="message in caseConvo.messages">
                     <div class="chat-body">
                       <div class="chat-content">
@@ -156,6 +164,9 @@ const closeConversation = () => {
               </div>
             </div>
           </div>
+        </div>
+        <div v-else>
+          No Conversation is open for this Case
         </div>
       </div>
     </div>

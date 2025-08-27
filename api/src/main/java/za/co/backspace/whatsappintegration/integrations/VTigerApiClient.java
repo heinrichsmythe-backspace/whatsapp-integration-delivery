@@ -29,6 +29,20 @@ public class VTigerApiClient {
         this.config = config;
     }
 
+    public String makeModuleContactId(String contactId) {
+        if (contactId.contains("x")) {
+            return contactId;
+        }
+        return config.getVTigerContactsIdPrefix() + "x" + contactId;
+    }
+
+    public String makeModuleCaseId(String caseId) {
+        if (caseId.contains("x")) {
+            return caseId;
+        }
+        return config.getVTigerCasesIdPrefix() + "x" + caseId;
+    }
+
     private RestTemplate restTemplate() {
         final RestTemplate restTemplate = new RestTemplate();
         List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
