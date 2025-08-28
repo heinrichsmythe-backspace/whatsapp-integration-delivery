@@ -158,7 +158,6 @@ const tryAuthenticate = () => {
   loading_auth.value = true;
   ConversationService.tryAuth(input_username.value, input_accessKey.value).then(success => {
     loading_auth.value = false;
-    console.log(success.data);
     const t = {
       vttoken: success.data.token
     };
@@ -218,11 +217,11 @@ const logout = async () => {
                       v-for="message in caseConvo.messages">
                       <div class="chat-body">
                         <div class="chat-content">
-                          {{ message.author }}
                           <p>
                             {{ message.messageText }}
                           </p>
-                          <p class="chat-time">{{ DateFormatter.formatDateTime(message.date) }}</p>
+                          <small class="chat-time mb-0">{{ DateFormatter.formatDateTime(message.date) }}</small>
+                          <small>{{ message.author }}</small>
                         </div>
                       </div>
                     </div>
