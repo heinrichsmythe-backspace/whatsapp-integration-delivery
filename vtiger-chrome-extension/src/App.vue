@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import ErrorHandler from './errorhandling/ErrorHandler';
 import ConversationService, { type WhatsAppConversationFullInfo } from './services/ConversationService';
 import LoadingSpinner from './components/LoadingSpinner.vue';
 import DateFormatter from './formatters/DateFormatter';
+import { TOKEN_KEY } from './localStorage/keys';
+import { setToken } from './http/axiosClient';
 
+const authToken = ref<string>();
 const currentCaseId = ref<string>();
 const loading_converstation = ref<boolean>();
 const loading_sendMessage = ref<boolean>();
@@ -13,8 +16,48 @@ const caseConvo = ref<WhatsAppConversationFullInfo>();
 const input_message = ref<string>();
 const chatContainer = ref<HTMLElement | null>(null);
 const chromeTabId = ref<number>();
+const loading_auth = ref<boolean>();
+const input_username = ref<string>();
+const input_accessKey = ref<string>();
 
 onMounted(() => {
+  chrome.storage.local.get(TOKEN_KEY).then(res => {
+    if (res) {
+
+      authToken.value = res[TOKEN_KEY];
+    }
+  });
+});
+
+watch(() => authToken.value, (newValue, prevValue) => {
+  if (prevValue != newValue) {
+    if (newValue) {
+      setToken(newValue);
+      //user authed success
+      initAfterAuth();
+    }
+  }
+});
+
+watch(() => currentCaseId.value, (newValue, previousValue) => {
+  if (newValue && previousValue != newValue) {
+    fetchConversationForCase();
+  }
+});
+
+const authButtonDisabled = computed(() => {
+  if (loading_auth.value) {
+    return true;
+  }
+  if (!input_accessKey.value || input_accessKey.value.length == 0) {
+    return true;
+  }
+  if (!input_username.value || input_username.value.length == 0) {
+    return true;
+  }
+});
+
+const initAfterAuth = () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chromeTabId.value = tabs[0]?.id;
     if (!chromeTabId) return;
@@ -31,13 +74,7 @@ onMounted(() => {
       currentCaseId.value = msg.caseId;
     }
   });
-});
-
-watch(() => currentCaseId.value, (newValue, previousValue) => {
-  if (newValue && previousValue != newValue) {
-    fetchConversationForCase();
-  }
-});
+}
 
 const fetchConversationForCase = () => {
   loading_converstation.value = true;
@@ -111,68 +148,124 @@ const closeConversation = () => {
   }
 }
 
+const tryAuthenticate = () => {
+  if (!input_username.value) {
+    return;
+  }
+  if (!input_accessKey.value) {
+    return;
+  }
+  loading_auth.value = true;
+  ConversationService.tryAuth(input_username.value, input_accessKey.value).then(success => {
+    loading_auth.value = false;
+    console.log(success.data);
+    const t = {
+      vttoken: success.data.token
+    };
+    chrome.storage.local.set(t);
+    authToken.value = success.data.token;
+    input_username.value = undefined;
+    input_accessKey.value = undefined;
+  }, error => {
+    ErrorHandler.handleApiErrorResponse(error);
+    loading_auth.value = false;
+  });
+}
+
+const logout = async () => {
+  await chrome.storage.local.remove(TOKEN_KEY);
+  authToken.value = undefined;
+}
+
 </script>
 
 <template>
-  <div class="container py-2">
-    <div class="text-end">
-      <button class="btn btn-secondary" @click="recheckForCase()">Reload</button>
-    </div>
-    <div v-if="currentCaseId">
-      <LoadingSpinner :loading="loading_converstation || loading_closingConversation" class="text-center mt-2" />
+  <div class="py-3 px-3">
+    <div v-if="authToken">
       <div class="">
-        <div class="row" v-if="caseConvo">
-          <div class="col-12">
-            <button class="btn btn-outline-danger float-end" v-if="caseConvo.status == 'OPEN'"
-              @click="closeConversation()">Close conversation</button>
+        <div class="row">
+          <div class="col-6">
+            <div v-if="caseConvo">
+              <i class="icon wb-chat-text" aria-hidden="true"></i> Case Chat: {{ caseConvo.caseNo }}
+            </div>
           </div>
-          <div class="col-md-7 col-xs-12 col-md-offset-2">
-            <div class="panel">
-              <div class="panel-heading">
-                <h3 class="panel-title">
-                  <i class="icon wb-chat-text" aria-hidden="true"></i> Case Chat: {{ caseConvo.caseNo }}
-                </h3>
-              </div>
-              <div class="panel-body" ref="chatContainer">
-                <div class="chats">
-                  <div>Conversation with: {{ caseConvo.msisdn }}</div>
-                  <div class="chat" :class="{ 'chat-left': message.direction == 'Incoming' }"
-                    v-for="message in caseConvo.messages">
-                    <div class="chat-body">
-                      <div class="chat-content">
-                        {{ message.author }}
-                        <p>
-                          {{ message.messageText }}
-                        </p>
-                        <p class="chat-time">{{ DateFormatter.formatDateTime(message.date) }}</p>
+          <div class="col-6 text-end">
+            <button class="btn btn-icon" @click="recheckForCase()"><i class="fa fa-refresh"></i></button>
+            <button class="btn btn-icon" @click="logout()"><i class="fa fa-sign-out"></i></button>
+          </div>
+        </div>
+      </div>
+      <div v-if="currentCaseId">
+        <hr />
+        <LoadingSpinner :loading="loading_converstation || loading_closingConversation" class="text-center mt-2" />
+        <div class="">
+          <div class="row" v-if="caseConvo">
+            <div class="col-12">
+              <button class="btn btn-outline-danger float-end" v-if="caseConvo.status == 'OPEN'"
+                @click="closeConversation()">Close conversation</button>
+            </div>
+            <div class="col-md-7 col-xs-12 col-md-offset-2">
+              <div class="panel">
+                <div class="panel-heading">
+                  <p class="panel-title">
+                    <div>Conversation with: {{caseConvo.contactName}} ({{ caseConvo.msisdn }})</div>
+                  </p>
+                </div>
+                <div class="panel-body" ref="chatContainer">
+                  <div class="chats">
+                    <p class="text-center text-muted" v-if="caseConvo.messages.length == 0">No messages yet</p>
+                    <div class="chat" :class="{ 'chat-left': message.direction == 'Incoming' }"
+                      v-for="message in caseConvo.messages">
+                      <div class="chat-body">
+                        <div class="chat-content">
+                          {{ message.author }}
+                          <p>
+                            {{ message.messageText }}
+                          </p>
+                          <p class="chat-time">{{ DateFormatter.formatDateTime(message.date) }}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div class="panel-footer">
-                <p v-if="caseConvo.status == 'CLOSED'">Conversation was closed by {{ caseConvo.closedBy }} @ {{
-                  DateFormatter.formatDateTime(caseConvo.dateClosed!) }}</p>
-                <div class="input-group" v-if="caseConvo.status == 'OPEN'">
-                  <textarea type="text" class="form-control" placeholder="Say something" rows="2"
-                    v-model="input_message"></textarea>
-                  <span class="input-group-btn">
-                    <button class="btn btn-primary" type="button" @click="sendMessage()"
-                      :disabled="!input_message || input_message.length == 0 || loading_sendMessage || loading_closingConversation">Send</button>
-                  </span>
+                <div class="panel-footer">
+                  <p v-if="caseConvo.status == 'CLOSED'">Conversation was closed by {{ caseConvo.closedBy }} @ {{
+                    DateFormatter.formatDateTime(caseConvo.dateClosed!) }}</p>
+                  <div class="input-group" v-if="caseConvo.status == 'OPEN'">
+                    <textarea type="text" class="form-control" placeholder="Say something" rows="2"
+                      v-model="input_message"></textarea>
+                    <span class="input-group-btn">
+                      <button class="btn btn-primary" type="button" @click="sendMessage()"
+                        :disabled="!input_message || input_message.length == 0 || loading_sendMessage || loading_closingConversation">Send</button>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+          <div v-else>
+            No Conversation is open for this Case
+          </div>
         </div>
-        <div v-else>
-          No Conversation is open for this Case
-        </div>
+      </div>
+      <div v-else>
+        <p class="">No case selected</p>
+        <p>Open a case on vTiger</p>
       </div>
     </div>
     <div v-else>
-      <p class="">No case selected</p>
-      <p>Open a case on vTiger</p>
+      <!-- <p><i class="fa fa-unlock text-warning me-1"></i>Authentication is required</p> -->
+      <p class="text-muted">Enter username and access key</p>
+      <div class="form-group">
+        <input placeholder="vTiger username" class="form-control mb-2" v-model="input_username" />
+      </div>
+      <div class="form-group">
+        <input placeholder="vTiger access key" class="form-control mb-2" type="password" v-model="input_accessKey" />
+        <div class="mb-2">
+          <small>Access key can be found on the "My Preferences" page in vTiger</small>
+        </div>
+      </div>
+      <button class="btn btn-primary" @click="tryAuthenticate()" :disabled="authButtonDisabled">Authenticate</button>
     </div>
   </div>
 </template>

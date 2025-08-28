@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import za.co.backspace.whatsappintegration.config.WhatsAppIntegrationApplicationConfig;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.DialogArgName;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.DialogName;
 import za.co.backspace.whatsappintegration.dialogs.Dialogs.WhatsAppDialog;
@@ -15,9 +16,11 @@ import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppUser;
 public class CallMeBackDialog implements WhatsAppDialog {
 
     private VTigerApiClient vTigerApiClient;
+    private WhatsAppIntegrationApplicationConfig config;
 
-    public CallMeBackDialog(VTigerApiClient vTigerApiClient) {
+    public CallMeBackDialog(VTigerApiClient vTigerApiClient, WhatsAppIntegrationApplicationConfig config) {
         this.vTigerApiClient = vTigerApiClient;
+        this.config = config;
     }
 
     @Override
@@ -36,7 +39,7 @@ public class CallMeBackDialog implements WhatsAppDialog {
                 "Open",
                 "high",
                 whatsAppUser.getVTigerContactId());
-        var newCase = vTigerApiClient.createCase(caseReq);
+        var newCase = vTigerApiClient.createCase(caseReq, config.getVTigerSystemUsername(), config.getVTigerSystemAccessKey());
         List<String> menu = new ArrayList<>();
         menu.add(String.format("Sure thing!\n\nA team member will call you back shortly, your reference is %s\n",
                 newCase.getCaseNo()));

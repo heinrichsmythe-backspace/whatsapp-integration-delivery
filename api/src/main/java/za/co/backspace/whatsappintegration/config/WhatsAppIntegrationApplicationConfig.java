@@ -62,18 +62,25 @@ public class WhatsAppIntegrationApplicationConfig {
         return vTigerBaseUrl;
     }
 
-    @Value("${vtiger.username}")
-    private String vTigerUsername;
+    @Value("${vtiger.systemuser-username}")
+    private String vTigerSystemUsername;
 
-    public String getVTigerUsername() {
-        return vTigerUsername;
+    public String getVTigerSystemUsername() {
+        return vTigerSystemUsername;
     }
 
-    @Value("${vtiger.access-key}")
-    private String vTigerAccessKey;
+    @Value("${vtiger.systemuser-accessKey}")
+    private String vTigerSystemAccessKey;
 
-    public String getVTigerAccessKey() {
-        return vTigerAccessKey;
+    public String getVTigerSystemAccessKey() {
+        return vTigerSystemAccessKey;
+    }
+
+    @Value("${vtiger.auth-internal-token-key}")
+    private String vTigerAuthInternalTokenKey;
+
+    public String getVTigerAuthInternalTokenKey() {
+        return vTigerAuthInternalTokenKey;
     }
 
     @Value("${conversation.autoclose-seconds}")

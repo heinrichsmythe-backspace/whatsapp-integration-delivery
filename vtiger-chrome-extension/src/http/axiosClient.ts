@@ -1,4 +1,3 @@
-import { TOKEN_KEY } from '../localStorage/keys';
 import axios, { type RawAxiosRequestHeaders } from 'axios';
 
 const instance = axios.create();
@@ -14,15 +13,14 @@ instance.interceptors.response.use((response) => {
 
 const onLogout = () => {
   removeToken();
-  localStorage.removeItem(TOKEN_KEY);
 }
 
 export const setToken = (token: string) => {
-  instance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  instance.defaults.headers.common['X-Auth-Token'] = `${token}`;
 }
 
 const removeToken = () => {
-  instance.defaults.headers.common['Authorization'] = ``;
+  instance.defaults.headers.common['X-Auth-Token'] = ``;
 }
 
 const get = async <T>(url: string): Promise<T> => {

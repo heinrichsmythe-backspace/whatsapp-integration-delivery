@@ -21,6 +21,7 @@ public class WhatsAppConversation {
     Long id;
 
     String msisdn;
+    String contactName;
     LocalDateTime dateCreated;
     String contactId;
     String caseId;// nullable

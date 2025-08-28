@@ -19,6 +19,7 @@ import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import za.co.backspace.whatsappintegration.config.WhatsAppIntegrationApplicationConfig;
 import za.co.backspace.whatsappintegration.rest.RestTemplateLoggingInterceptor;
+import za.co.backspace.whatsappintegration.utils.AuthUtil;
 
 @Component
 public class VTigerApiClient {
@@ -54,11 +55,11 @@ public class VTigerApiClient {
         return restTemplate;
     }
 
-    public CaseDetail createCase(CreateCaseRequestCaseDetail newCase) {
+    public CaseDetail createCase(CreateCaseRequestCaseDetail newCase, String vTigerUsername, String vTigerAccessKey) {
         var request = new CreateRecordRequest<CreateCaseRequestCaseDetail>("Cases", newCase);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+        headers.setBasicAuth(vTigerUsername, vTigerAccessKey);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<CreateRecordRequest<CreateCaseRequestCaseDetail>> httpEntity = new HttpEntity<>(request, headers);
         var response = restTemplate().exchange(
@@ -75,10 +76,10 @@ public class VTigerApiClient {
         }
     }
 
-    public CaseDetail getCaseById(String recordId) {
+    public CaseDetail getCaseById(String recordId, String vTigerUsername, String vTigerAccessKey) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+        headers.setBasicAuth(vTigerUsername, vTigerAccessKey);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<Void> httpEntity = new HttpEntity<>(headers);
         String url = config.getVTigerBaseUrl() + "/restapi/v1/vtiger/default/retrieve?id=" + recordId;
@@ -96,11 +97,12 @@ public class VTigerApiClient {
         }
     }
 
-    public ContactDetail createContact(CreateContactRequestContactDetail contactDetail) {
+    public ContactDetail createContact(CreateContactRequestContactDetail contactDetail, String vTigerUsername,
+            String vTigerAccessKey) {
         var request = new CreateRecordRequest<CreateContactRequestContactDetail>("Contacts", contactDetail);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+        headers.setBasicAuth(vTigerUsername, vTigerAccessKey);
         HttpEntity<CreateRecordRequest<CreateContactRequestContactDetail>> httpEntity = new HttpEntity<>(request,
                 headers);
         var response = restTemplate().exchange(
@@ -117,10 +119,10 @@ public class VTigerApiClient {
         }
     }
 
-    public List<ContactDetail> lookupContactByMsisdn(String msisdn) {
+    public List<ContactDetail> lookupContactByMsisdn(String msisdn, String vTigerUsername, String vTigerAccessKey) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBasicAuth(config.getVTigerUsername(), config.getVTigerAccessKey());
+        headers.setBasicAuth(vTigerUsername, vTigerAccessKey);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
         HttpEntity<Void> httpEntity = new HttpEntity<>(headers);
@@ -147,6 +149,40 @@ public class VTigerApiClient {
         } else {
             throw new RuntimeException("Lookup contact not success: " + response);
         }
+    }
+
+    public ValidUserAuth getMyUser(String vTigerUsername, String vTigerAccessKey) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth(vTigerUsername, vTigerAccessKey);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        var response = restTemplate().exchange(
+                config.getVTigerBaseUrl() + "/restapi/v1/vtiger/default/me",
+                HttpMethod.GET,
+                entity,
+                new ParameterizedTypeReference<VTigerApiResponse<ContactDetail>>() {
+                });
+
+        var body = response.getBody();
+        if (body != null && body.isSuccess()) {
+            // Encrypt username:accessKey into a token
+            String raw = vTigerUsername + ":" + vTigerAccessKey;
+            var tokenUtil = new AuthUtil(config.getVTigerAuthInternalTokenKey());
+            String token = tokenUtil.encrypt(raw);
+            return new ValidUserAuth(token);
+        } else {
+            throw new RuntimeException("Auth not successful: " + response);
+        }
+    }
+
+    public String[] decryptToken(String token) {
+        var tokenUtil = new AuthUtil(config.getVTigerAuthInternalTokenKey());
+        String decrypted = tokenUtil.decrypt(token);
+        return decrypted.split(":");
+    }
+
+    public record ValidUserAuth(String token) {
+
     }
 
     public static class VTigerApiResponse<T> {

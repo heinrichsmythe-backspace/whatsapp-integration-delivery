@@ -3,7 +3,9 @@ package za.co.backspace.whatsappintegration.services;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import za.co.backspace.whatsappintegration.SystemInsights;
 import za.co.backspace.whatsappintegration.config.WhatsAppIntegrationApplicationConfig;
@@ -15,6 +17,7 @@ import za.co.backspace.whatsappintegration.dtos.WhatsAppConversationDtos.WhatsAp
 import za.co.backspace.whatsappintegration.dtos.whatsapp.WhatsAppCallbackPayload;
 import za.co.backspace.whatsappintegration.integrations.VTigerApiClient;
 import za.co.backspace.whatsappintegration.integrations.VTigerApiClient.CreateCaseRequestCaseDetail;
+import za.co.backspace.whatsappintegration.integrations.VTigerApiClient.ValidUserAuth;
 import za.co.backspace.whatsappintegration.integrations.WhatsAppApiClient;
 import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppConversation;
 import za.co.backspace.whatsappintegration.persistence.entities.WhatsAppConversation.WhatsAppConversationStatus;
@@ -24,6 +27,7 @@ import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversatio
 import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppConversationRepository;
 import za.co.backspace.whatsappintegration.persistence.repos.WhatsAppUserRepository;
 import za.co.backspace.whatsappintegration.rest.WhatsAppController.SendMessageRequest;
+import za.co.backspace.whatsappintegration.utils.AuthUtil;
 import za.co.backspace.whatsappintegration.utils.ConversationCache;
 
 import java.time.LocalDateTime;
@@ -65,7 +69,7 @@ public class WhatsAppService {
     private List<String> getMessagesToSend(String fromMsisdn, String messageBody) {
         var defaultDialog = DialogName.MAIN_MENU;
         var messagesToSend = new ArrayList<String>();
-        var dialogs = Dialogs.WhatsAppDialogFlow(this, vTigerApiClient);
+        var dialogs = Dialogs.WhatsAppDialogFlow(this, vTigerApiClient, config);
         var existingConvo = conversationCache.getByKey(implementationName, fromMsisdn);
         DialogName nextDialogName;
         WhatsAppUser whatsAppUser = getOrCreateWhatsAppUserFromMsisdn(fromMsisdn);
@@ -109,7 +113,8 @@ public class WhatsAppService {
             logConversationEvent(msisdn, "WhatsAppUser doesnt exist: checking vTiger for contact matching msisdn");
             String firstName, lastName, vTigerContactId;
             // see if we can find a contact in vtiger
-            var matchingContacts = vTigerApiClient.lookupContactByMsisdn(msisdn);
+            var matchingContacts = vTigerApiClient.lookupContactByMsisdn(msisdn, config.getVTigerSystemUsername(),
+                    config.getVTigerSystemAccessKey());
             logConversationEvent(msisdn,
                     String.format("%d contacts found for msisdn in vTiger", matchingContacts.size()));
             if (matchingContacts.size() > 0) {
@@ -125,7 +130,8 @@ public class WhatsAppService {
                         firstName,
                         lastName,
                         msisdn);
-                var newContact = vTigerApiClient.createContact(newContactReq);
+                var newContact = vTigerApiClient.createContact(newContactReq, config.getVTigerSystemUsername(),
+                        config.getVTigerSystemAccessKey());
                 vTigerContactId = newContact.getId();
             }
             logConversationEvent(msisdn, String.format("Creating WhatsApp user %s, %s, %s, %s", firstName, lastName,
@@ -150,10 +156,12 @@ public class WhatsAppService {
                 "Open",
                 "high",
                 whatsAppUser.getVTigerContactId());
-        var newCase = vTigerApiClient.createCase(caseReq);
+        var newCase = vTigerApiClient.createCase(caseReq, config.getVTigerSystemUsername(),
+                config.getVTigerSystemAccessKey());
         var newConvo = new WhatsAppConversation();
         newConvo.setDateCreated(LocalDateTime.now());
         newConvo.setMsisdn(whatsAppUser.getMsisdn());
+        newConvo.setContactName(whatsAppUser.getFirstName() + " " + whatsAppUser.getLastName());
         newConvo.setStatus(WhatsAppConversationStatus.OPEN);
         newConvo.setCaseId(newCase.getId());
         newConvo.setCaseNo(newCase.getCaseNo());
@@ -177,6 +185,7 @@ public class WhatsAppService {
                 convo.getCaseId(),
                 convo.getCaseNo(),
                 convo.getMsisdn(),
+                convo.getContactName(),
                 convo.getStatus(),
                 messages,
                 convo.getClosedBy(),
@@ -269,5 +278,18 @@ public class WhatsAppService {
                 systemInsights.reportError(e, "Error closing convo #" + c.getId());
             }
         });
+    }
+
+    public ValidUserAuth tryAuthVTiger(String vTigerUsername, String vTigerAccessKey) {
+        return vTigerApiClient.getMyUser(vTigerUsername, vTigerAccessKey);
+    }
+
+    public String authenticate(String token) {
+        try {
+            var authUtil = new AuthUtil(config.getVTigerAuthInternalTokenKey());
+            return authUtil.checkUserToken(token, vTigerApiClient);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication token", e);
+        }
     }
 }

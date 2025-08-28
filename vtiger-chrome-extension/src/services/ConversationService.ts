@@ -14,6 +14,7 @@ export type WhatsAppConversationFullInfo = {
     caseId: string;
     caseNo: string;
     msisdn: string;
+    contactName: string;
     messages: WhatsAppConversationMessage[];
     status: WhatsAppConversationStatus;
     closedBy?: string;
@@ -34,8 +35,13 @@ const closeConverstation = (caseId: string): Promise<ApiSuccessResponse<WhatsApp
     return axiosClient.post(`${ConfigLoader.getConfig().apiBaseUrl}/vtiger/conversations/case/${caseId}/close`, { caseId });
 }
 
+const tryAuth = (username: string, accessKey: string): Promise<ApiSuccessResponse<{ token: string }>> => {
+    return axiosClient.post(`${ConfigLoader.getConfig().apiBaseUrl}/vtiger/tryauth`, { username, accessKey });
+}
+
 export default {
     getConversationForCase,
     sendMessage,
-    closeConverstation
+    closeConverstation,
+    tryAuth
 }
